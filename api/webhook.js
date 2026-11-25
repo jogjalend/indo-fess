@@ -1,10 +1,10 @@
-// api/webhook.js - FULL FIX FINAL - COINFES SYSTEM
+// api/webhook.js - FULL FIX FINAL - ADMIN @jogja_lend - COINFES SYSTEM
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = "@indo_fess";
-const ADMIN_BASE = "@siverif";
-const MOD_BASE = "@jogja_lend";
-const ADMIN_ID = 123456789; // GANTI PAKE ID KAMU
-const BANNER_URL = "https://i.imgur.com/8Qw4w9a.jpeg"; // GANTI PAKE LINK BANNER KAMU
+const ADMIN_BASE = "@jogja_lend";
+const MOD_BASE = "@siverif";
+const ADMIN_ID = 8584319568; // GANTI PAKE ID TELEGRAM @jogja_lend! Chat @userinfobot pake akun @jogja_lend buat dapet ID-nya
+const BANNER_URL = "https://imgur.com/a/gdv9xwU"; // GANTI PAKE LINK BANNER KAMU
 
 async function tg(method, body) {
   const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
       if (d === 'set_interest') { if(sql) try{ await sql`UPDATE users SET step='interest' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Interest: <b>M / F / All</b>"); }
       if (d === 'kirim') { if(sql) try{ await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("✉️ <b>Kirim menfess kamu sekarang</b> (teks / foto / video).\n\nTeks kamu <b>tidak akan dihapus</b>.\n\n" + (isUnlimited(u) ? "♾️ Kamu <b>UNLIMITED</b>, gratis kirim sepuasnya!" : `🪙 Coinfes kamu: <b>${u.coinfes ?? 1000}</b> | 1 Post = <b>200</b>`)); }
       if (d === 'riwayat') { let list="Belum ada."; if(sql){ try{ const r=await sql`SELECT content FROM menfess WHERE user_id=${u.chat_id} ORDER BY id DESC LIMIT 5`; if(r.length) list=r.map((x,i)=>`${i+1}. ${x.content?.slice(0,60)}`).join("\n"); }catch(e){} } await edit(`⏳ <b>Riwayat:</b>\n\n${list}`); }
-      if (d === 'beli') await edit("🪙 <b>Beli Coinfes</b>\n\n🪙 <b>2.000 Coinfes</b> - Rp 10.000\n🪙 <b>20.000 Coinfes</b> - Rp 50.000\n♾️ <b>UNLIMITED 2 Bulan</b> - Rp 100.000\n<i>Unlimited = Gak perlu bayar Coinfes lagi!</i>\n\nCara beli:\n1. Transfer ke Admin\n2. Kirim bukti ke @carebian_5\n3. Coinfes langsung masuk!", { inline_keyboard: [[{ text: "💬 Chat Admin Buat Beli", url: "https://t.me/carebian_5" }],[{ text: "⬅️ Kembali", callback_data: "back" }]] });
+      if (d === 'beli') await edit("🪙 <b>Beli Coinfes</b>\n\n🪙 <b>2.000 Coinfes</b> - Rp 10.000\n🪙 <b>20.000 Coinfes</b> - Rp 50.000\n♾️ <b>UNLIMITED 2 Bulan</b> - Rp 100.000\n<i>Unlimited = Gak perlu bayar Coinfes lagi!</i>\n\nCara beli:\n1. Transfer ke Admin\n2. Kirim bukti ke @jogja_lend\n3. Coinfes langsung masuk!", { inline_keyboard: [[{ text: "💬 Chat Admin Buat Beli", url: "https://t.me/jogja_lend" }],[{ text: "⬅️ Kembali", callback_data: "back" }]] });
       if (d === 'bantuan') await edit("❓ <b>Bantuan</b>\n\n1. Klik <b>Kirim Menfess</b>\n2. Kirim menfess\n3. Auto ke-post di @indo_fess\n\n🪙 1 Post = 200 Coinfes\n♾️ Unlimited 100K = Gratis 2 Bulan");
       if (d === 'peraturan') await edit("📜 <b>Peraturan @indo_fess</b>\n\n1. No SARA & porn\n2. No doxxing\n3. No spam\n\nLanggar = Ban!");
       if (d === 'kritik') { if(sql) try{ await sql`UPDATE users SET step='kritik' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("🪶 <b>Kirim Kritik / Saran kamu.</b>"); }
@@ -240,4 +240,4 @@ Mau kirim lagi? <b>Langsung ketik aja</b> 👇`;
     }
     return res.status(200).json({ ok: true });
   } catch (e) { console.log(e); return res.status(200).json({ ok: true }); }
-}
+                                                       }
