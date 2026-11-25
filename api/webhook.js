@@ -1,8 +1,8 @@
-// api/webhook.js - FULL FIX FINAL + BANNER START
+// api/webhook.js - FULL FIX FINAL + TEKS GAK DIHAPUS + BALASAN CAKEP
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = "@indo_fess";
 const ADMIN_BASE = "@siverif";
-const MOD_BASE = "@siverif";
+const MOD_BASE = "@jogja_lend";
 const ADMIN_ID = 123456789; // GANTI PAKE ID KAMU
 const BANNER_URL = "https://i.imgur.com/8Qw4w9a.jpeg"; // GANTI PAKE LINK BANNER KAMU
 
@@ -109,13 +109,14 @@ export default async function handler(req, res) {
       if (d === 'set_birth') { if(sql) try{ await sql`UPDATE users SET step='birth' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Birth: <b>Agustus 2002</b>"); }
       if (d === 'set_loc') { if(sql) try{ await sql`UPDATE users SET step='location' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Location: <b>Yogyakarta</b>"); }
       if (d === 'set_interest') { if(sql) try{ await sql`UPDATE users SET step='interest' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Interest: <b>M / F / All</b>"); }
-      if (d === 'kirim') { if(sql) try{ await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("✉️ <b>Kirim menfess kamu sekarang</b> (teks / foto / video)."); }
+      if (d === 'kirim') { if(sql) try{ await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("✉️ <b>Kirim menfess kamu sekarang</b> (teks / foto / video).\n\nTeks kamu <b>tidak akan dihapus</b>, jadi aman."); }
       if (d === 'riwayat') { let list="Belum ada."; if(sql){ try{ const r=await sql`SELECT content FROM menfess WHERE user_id=${u.chat_id} ORDER BY id DESC LIMIT 5`; if(r.length) list=r.map((x,i)=>`${i+1}. ${x.content?.slice(0,60)}`).join("\n"); }catch(e){} } await edit(`⏳ <b>Riwayat:</b>\n\n${list}`); }
       if (d === 'beli') await edit("💎 <b>Beli Coin</b>\n\n10 Coin = 5k\n50 Coin = 20k\n100 Coin = 35k\n\nChat Admin: @carebian_5");
       if (d === 'bantuan') await edit("❓ <b>Bantuan</b>\n\n1. Klik <b>Kirim Menfess</b>\n2. Kirim menfess\n3. Auto ke-post di @indo_fess");
       if (d === 'peraturan') await edit("📜 <b>Peraturan @indo_fess</b>\n\n1. No SARA & porn\n2. No doxxing\n3. No spam\n\nLanggar = Ban!");
       if (d === 'kritik') { if(sql) try{ await sql`UPDATE users SET step='kritik' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("🪶 <b>Kirim Kritik / Saran kamu.</b>"); }
       if (d === 'back') await edit(profileText(u));
+      if (d === 'stop_kirim') { if(sql) try{ await sql`UPDATE users SET step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){} await edit(profileText(u)); }
       return res.status(200).json({ ok: true });
     }
 
@@ -138,7 +139,6 @@ export default async function handler(req, res) {
     if (['sex','birth','location','interest'].includes(u.step)) {
       if(sql) try{ if(u.step==='sex') await sql`UPDATE users SET sex=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='birth') await sql`UPDATE users SET birth=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='location') await sql`UPDATE users SET location=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='interest') await sql`UPDATE users SET interest=${text}, step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){}
       const nu = await getUser(sql, msg.from);
-      try { await tg('deleteMessage', { chat_id, message_id: msg.message_id }); } catch(e){}
       await tg('sendMessage', { chat_id, text: "✅ <b>Disimpan!</b>", parse_mode: 'HTML', reply_markup: mainMenu() });
       await tg('sendPhoto', { chat_id, photo: BANNER_URL, caption: profileText(nu), parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
@@ -147,8 +147,7 @@ export default async function handler(req, res) {
     if (u.step === 'kritik') {
       if(sql) try{ await sql`UPDATE users SET step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){}
       await tg('sendMessage', { chat_id: ADMIN_ID, text: `📩 Kritik dari @${u.username}:\n\n${text}` });
-      try { await tg('deleteMessage', { chat_id, message_id: msg.message_id }); } catch(e){}
-      await tg('sendMessage', { chat_id, text: "✅ <b>Kritik diteruskan.</b>", parse_mode: 'HTML', reply_markup: mainMenu() });
+      await tg('sendMessage', { chat_id, text: "✅ <b>Kritik diteruskan.</b>\n\nMakasih udah bantu IndoFess jadi lebih baik! 🙏", parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
     }
 
@@ -158,6 +157,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ===== KIRIM MENFESS - TEKS TIDAK DIHAPUS =====
     let file_id = null, type = 'text';
     if (msg.photo) { type = 'photo'; file_id = msg.photo[msg.photo.length - 1].file_id; }
     if (msg.video) { type = 'video'; file_id = msg.video.file_id; }
@@ -167,17 +167,39 @@ export default async function handler(req, res) {
     if (type === 'text') result = await tg('sendMessage', { chat_id: CHANNEL_ID, text: caption });
     if (type === 'photo') result = await tg('sendPhoto', { chat_id: CHANNEL_ID, photo: file_id, caption });
     if (type === 'video') result = await tg('sendVideo', { chat_id: CHANNEL_ID, video: file_id, caption });
+
     if (result?.ok) {
+      let sisaKuota = u.kuota ?? 1;
+      let sisaCoin = u.coin ?? 20;
       if (sql) try {
-        if (u.kuota > 0) await sql`UPDATE users SET kuota=kuota-1, step=NULL WHERE chat_id=${u.chat_id}`;
-        else await sql`UPDATE users SET coin=coin-1, step=NULL WHERE chat_id=${u.chat_id}`;
+        if (u.kuota > 0) { await sql`UPDATE users SET kuota=kuota-1, step='kirim' WHERE chat_id=${u.chat_id}`; sisaKuota = u.kuota - 1; }
+        else { await sql`UPDATE users SET coin=coin-1, step='kirim' WHERE chat_id=${u.chat_id}`; sisaCoin = u.coin - 1; }
         await sql`INSERT INTO menfess (user_id, content, type) VALUES (${u.chat_id}, ${text || '[Media]'}, ${type})`;
       } catch (e) {}
-      try { await tg('deleteMessage', { chat_id, message_id: msg.message_id }); } catch(e){}
-      await tg('sendMessage', { chat_id, text: `✅ <b>Menfess ke-post di @indo_fess!</b>`, parse_mode: 'HTML', reply_markup: mainMenu() });
+      // TIDAK ADA deleteMessage DI SINI - TEKS USER TETAP ADA
+      const preview = text ? (text.length > 80 ? text.slice(0,80) + "..." : text) : (type === 'photo' ? '📷 Foto' : '🎥 Video');
+      const successText = `╭─── <b>✅ MENFESS TERKIRIM!</b> ───╮
+│
+│  <i>"${preview}"</i>
+│
+│  Berhasil di-post ke @indo_fess
+│  Identitas kamu tetap <b>ANONIM</b> 🤫
+│
+│  ───────────────
+│  💔 Sisa Kuota Gratis : <b>${sisaKuota}x</b>
+│  💰 Sisa Coin : <b>${sisaCoin}</b>
+│
+╰───────────────────╯
+
+Mau kirim lagi? <b>Langsung ketik aja</b> di sini, gak perlu klik tombol lagi 👇`;
+      await tg('sendMessage', { chat_id, text: successText, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
+        [{ text: "👀 Lihat di Channel", url: "https://t.me/indo_fess" }],
+        [{ text: "✍️ Kirim Lagi ➤", callback_data: "kirim" }, { text: "🛑 Berhenti", callback_data: "stop_kirim" }],
+        [{ text: "👤 Profile", callback_data: "profile" }, { text: "🏠 Menu Utama", callback_data: "back" }]
+      ]}});
     } else {
-      await tg('sendMessage', { chat_id, text: `❌ Gagal post: ${result?.description}` });
+      await tg('sendMessage', { chat_id, text: `❌ <b>Gagal post:</b> ${result?.description}\n\nCoba kirim ulang ya.`, parse_mode: 'HTML' });
     }
     return res.status(200).json({ ok: true });
   } catch (e) { console.log(e); return res.status(200).json({ ok: true }); }
-                                       }
+      }
