@@ -1,10 +1,4 @@
 {
-  "name": "indofess",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": { "dev": "vercel dev" },
-  "dependencies": {
-    "@neondatabase/serverless": "^0.10.0",
-    "node-telegram-bot-api": "^0.64.0"
-  }
+  "name": "indo-fess",
+  "version": "1.0.0"
 }
