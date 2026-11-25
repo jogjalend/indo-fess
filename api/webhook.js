@@ -1,10 +1,9 @@
-// api/webhook.js - FULL FIX FINAL - ADMIN @jogja_lend - COINFES SYSTEM
+// api/webhook.js - FULL FIX - START SIMPLE NO GAMBAR - ADMIN @jogja_lend
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = "@indo_fess";
 const ADMIN_BASE = "@jogja_lend";
 const MOD_BASE = "@siverif";
-const ADMIN_ID = 8584319568; // GANTI PAKE ID TELEGRAM @jogja_lend! Chat @userinfobot pake akun @jogja_lend buat dapet ID-nya
-const BANNER_URL = "https://imgur.com/a/gdv9xwU"; // GANTI PAKE LINK BANNER KAMU
+const ADMIN_ID = 123456789; // GANTI PAKE ID TELEGRAM @jogja_lend! Chat @userinfobot pake akun @jogja_lend
 
 async function tg(method, body) {
   const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
@@ -80,6 +79,12 @@ function mainMenu() {
   ]};
 }
 
+// Hapus pesan user, kecuali /start
+async function autoDelete(chat_id, message_id, isStart) {
+  if (isStart) return; // START GAK DIHAPUS
+  try { await tg('deleteMessage', { chat_id, message_id }); } catch(e){}
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).json({ ok: true });
   try {
@@ -96,8 +101,7 @@ export default async function handler(req, res) {
       const d = cb.data;
 
       async function edit(text, markup) {
-        let r = await tg('editMessageCaption', { chat_id, message_id, caption: text, parse_mode: 'HTML', reply_markup: markup || mainMenu() });
-        if (!r.ok) r = await tg('editMessageText', { chat_id, message_id, text, parse_mode: 'HTML', reply_markup: markup || mainMenu() });
+        let r = await tg('editMessageText', { chat_id, message_id, text, parse_mode: 'HTML', reply_markup: markup || mainMenu() });
         if (!r.ok) { try { await tg('deleteMessage', { chat_id, message_id }); } catch(e){} await tg('sendMessage', { chat_id, text, parse_mode: 'HTML', reply_markup: markup || mainMenu() }); }
       }
       async function fresh(text) { try { await tg('deleteMessage', { chat_id, message_id }); } catch(e){} await tg('sendMessage', { chat_id, text, parse_mode: 'HTML' }); }
@@ -108,7 +112,7 @@ export default async function handler(req, res) {
       if (d === 'set_birth') { if(sql) try{ await sql`UPDATE users SET step='birth' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Birth: <b>Agustus 2002</b>"); }
       if (d === 'set_loc') { if(sql) try{ await sql`UPDATE users SET step='location' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Location: <b>Yogyakarta</b>"); }
       if (d === 'set_interest') { if(sql) try{ await sql`UPDATE users SET step='interest' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("Kirim Interest: <b>M / F / All</b>"); }
-      if (d === 'kirim') { if(sql) try{ await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("✉️ <b>Kirim menfess kamu sekarang</b> (teks / foto / video).\n\nTeks kamu <b>tidak akan dihapus</b>.\n\n" + (isUnlimited(u) ? "♾️ Kamu <b>UNLIMITED</b>, gratis kirim sepuasnya!" : `🪙 Coinfes kamu: <b>${u.coinfes ?? 1000}</b> | 1 Post = <b>200</b>`)); }
+      if (d === 'kirim') { if(sql) try{ await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }catch(e){} await fresh("✉️ <b>Kirim menfess kamu sekarang</b> (teks / foto / video).\n\n" + (isUnlimited(u) ? "♾️ Kamu <b>UNLIMITED</b>, gratis kirim sepuasnya!" : `🪙 Coinfes kamu: <b>${u.coinfes ?? 1000}</b> | 1 Post = <b>200</b>`)); }
       if (d === 'riwayat') { let list="Belum ada."; if(sql){ try{ const r=await sql`SELECT content FROM menfess WHERE user_id=${u.chat_id} ORDER BY id DESC LIMIT 5`; if(r.length) list=r.map((x,i)=>`${i+1}. ${x.content?.slice(0,60)}`).join("\n"); }catch(e){} } await edit(`⏳ <b>Riwayat:</b>\n\n${list}`); }
       if (d === 'beli') await edit("🪙 <b>Beli Coinfes</b>\n\n🪙 <b>2.000 Coinfes</b> - Rp 10.000\n🪙 <b>20.000 Coinfes</b> - Rp 50.000\n♾️ <b>UNLIMITED 2 Bulan</b> - Rp 100.000\n<i>Unlimited = Gak perlu bayar Coinfes lagi!</i>\n\nCara beli:\n1. Transfer ke Admin\n2. Kirim bukti ke @jogja_lend\n3. Coinfes langsung masuk!", { inline_keyboard: [[{ text: "💬 Chat Admin Buat Beli", url: "https://t.me/jogja_lend" }],[{ text: "⬅️ Kembali", callback_data: "back" }]] });
       if (d === 'bantuan') await edit("❓ <b>Bantuan</b>\n\n1. Klik <b>Kirim Menfess</b>\n2. Kirim menfess\n3. Auto ke-post di @indo_fess\n\n🪙 1 Post = 200 Coinfes\n♾️ Unlimited 100K = Gratis 2 Bulan");
@@ -125,6 +129,7 @@ export default async function handler(req, res) {
     const chat_id = msg.chat.id;
     const u = await getUser(sql, msg.from);
     const text = msg.text || msg.caption || "";
+    const isStart = text === '/start';
 
     // ===== ADMIN: /unlimited =====
     if (text.startsWith('/unlimited') && msg.from.id === ADMIN_ID) {
@@ -132,9 +137,10 @@ export default async function handler(req, res) {
       if (!targetId) { await tg('sendMessage', { chat_id, text: "Cara: /unlimited 123456789" }); return res.status(200).json({ ok: true }); }
       if (sql) try {
         await sql`UPDATE users SET unlimited_until = CASE WHEN unlimited_until IS NULL OR unlimited_until < NOW() THEN NOW() + INTERVAL '60 days' ELSE unlimited_until + INTERVAL '60 days' END WHERE chat_id=${targetId}`;
-        await tg('sendMessage', { chat_id: targetId, text: `🎉 <b>SELAMAT! KAMU JADI UNLIMITED!</b>\n\n♾️ Unlimited 2 Bulan aktif!\n🪙 Gak perlu bayar Coinfes lagi per post!\n\nGas kirim menfess sepuasnya! 👇`, parse_mode: 'HTML', reply_markup: mainMenu() });
+        await tg('sendMessage', { chat_id: targetId, text: `🎉 <b>SELAMAT! KAMU JADI UNLIMITED!</b>\n\n♾️ Unlimited 2 Bulan aktif!\n🪙 Gak perlu bayar Coinfes lagi per post!`, parse_mode: 'HTML', reply_markup: mainMenu() });
         await tg('sendMessage', { chat_id, text: `✅ Unlimited 60 hari aktif buat ${targetId}` });
       } catch(e){ await tg('sendMessage', { chat_id, text: "Gagal: " + e.message }); }
+      await autoDelete(chat_id, msg.message_id, false);
       return res.status(200).json({ ok: true });
     }
 
@@ -147,28 +153,32 @@ export default async function handler(req, res) {
         await tg('sendMessage', { chat_id: targetId, text: `🪙 <b>+${jumlah} Coinfes masuk!</b>\n\nMakasih udah top up! Gas kirim menfess! 👇`, parse_mode: 'HTML', reply_markup: mainMenu() });
         await tg('sendMessage', { chat_id, text: `✅ +${jumlah} ke ${targetId}` });
       } catch(e){}
+      await autoDelete(chat_id, msg.message_id, false);
       return res.status(200).json({ ok: true });
     }
 
-    if (text === '/start') {
+    // ===== START - SIMPLE, NO GAMBAR, GAK DIHAPUS =====
+    if (isStart) {
       if(sql) try{ await sql`UPDATE users SET step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){}
-      try { await tg('deleteMessage', { chat_id, message_id: msg.message_id }); } catch(e){}
-      const welcome = `👋 <b>Selamat Datang di IndoFess!</b>\n\n🎁 Daftar baru dapet <b>1000 Coinfes GRATIS!</b>\n📝 1 Post = 200 Coinfes\n♾️ Unlimited 2 Bulan cuma 100K\n\nKirim menfess anonim tanpa takut ketahuan! 👇\n\n`;
-      const r = await tg('sendPhoto', { chat_id, photo: BANNER_URL, caption: welcome + profileText(u), parse_mode: 'HTML', reply_markup: mainMenu() });
-      if (!r.ok) await tg('sendMessage', { chat_id, text: welcome + profileText(u), parse_mode: 'HTML', reply_markup: mainMenu() });
+      // GAK ADA deleteMessage - START TETAP ADA
+      // GAK ADA sendPhoto - TEKS AJA
+      const welcome = `👋 <b>Selamat Datang di IndoFess!</b>\n\n🎁 Daftar baru dapet <b>1000 Coinfes GRATIS!</b>\n📝 1 Post = 200 Coinfes\n♾️ Unlimited 2 Bulan cuma 100K\n\nKirim menfess anonim tanpa takut ketahuan! 👇\n\n` + profileText(u);
+      await tg('sendMessage', { chat_id, text: welcome, parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
     }
 
+    // ===== SETTING - PESAN USER DIHAPUS =====
     if (['sex','birth','location','interest'].includes(u.step)) {
       if(sql) try{ if(u.step==='sex') await sql`UPDATE users SET sex=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='birth') await sql`UPDATE users SET birth=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='location') await sql`UPDATE users SET location=${text}, step=NULL WHERE chat_id=${u.chat_id}`; if(u.step==='interest') await sql`UPDATE users SET interest=${text}, step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){}
+      await autoDelete(chat_id, msg.message_id, false);
       const nu = await getUser(sql, msg.from);
-      await tg('sendMessage', { chat_id, text: "✅ <b>Disimpan!</b>", parse_mode: 'HTML', reply_markup: mainMenu() });
-      await tg('sendPhoto', { chat_id, photo: BANNER_URL, caption: profileText(nu), parse_mode: 'HTML', reply_markup: mainMenu() });
+      await tg('sendMessage', { chat_id, text: "✅ <b>Disimpan!</b>\n\n" + profileText(nu), parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
     }
 
     if (u.step === 'kritik') {
       if(sql) try{ await sql`UPDATE users SET step=NULL WHERE chat_id=${u.chat_id}`; }catch(e){}
+      await autoDelete(chat_id, msg.message_id, false);
       await tg('sendMessage', { chat_id: ADMIN_ID, text: `📩 Kritik dari @${u.username}:\n\n${text}` });
       await tg('sendMessage', { chat_id, text: "✅ <b>Kritik diteruskan.</b>\n\nMakasih udah bantu IndoFess jadi lebih baik! 🙏", parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
@@ -176,6 +186,7 @@ export default async function handler(req, res) {
 
     if (u.step !== 'kirim') {
       if (text.startsWith('/')) return res.status(200).json({ ok: true });
+      await autoDelete(chat_id, msg.message_id, false);
       await tg('sendMessage', { chat_id, text: "Klik dulu tombol <b>Kirim Menfess ➤</b> di bawah biar menfess kamu ke-post.", parse_mode: 'HTML', reply_markup: mainMenu() });
       return res.status(200).json({ ok: true });
     }
@@ -183,21 +194,15 @@ export default async function handler(req, res) {
     // ===== CEK COINFES & UNLIMITED =====
     const unlimited = isUnlimited(u);
     if (!unlimited && (u.coinfes ?? 0) < 200) {
-      await tg('sendMessage', { chat_id, text: `╭─── <b>❌ COINFES HABIS!</b> ───╮
-│
-│  Coinfes kamu : <b>${u.coinfes ?? 0}</b>
-│  Butuh : <b>200</b> buat 1 post 😭
-│
-│  Top up dulu yuk biar bisa kirim lagi!
-│
-╰───────────────────╯`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
+      await autoDelete(chat_id, msg.message_id, false);
+      await tg('sendMessage', { chat_id, text: `╭─── <b>❌ COINFES HABIS!</b> ───╮\n│\n│  Coinfes kamu : <b>${u.coinfes ?? 0}</b>\n│  Butuh : <b>200</b> buat 1 post 😭\n│\n│  Top up dulu yuk biar bisa kirim lagi!\n│\n╰───────────────────╯`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
         [{ text: "🪙 Beli Coinfes", callback_data: "beli" }],
         [{ text: "👤 Profile", callback_data: "profile" }]
       ]}});
       return res.status(200).json({ ok: true });
     }
 
-    // ===== KIRIM MENFESS - TEKS TIDAK DIHAPUS =====
+    // ===== KIRIM MENFESS =====
     let file_id = null, type = 'text';
     if (msg.photo) { type = 'photo'; file_id = msg.photo[msg.photo.length - 1].file_id; }
     if (msg.video) { type = 'video'; file_id = msg.video.file_id; }
@@ -215,21 +220,10 @@ export default async function handler(req, res) {
         else { await sql`UPDATE users SET step='kirim' WHERE chat_id=${u.chat_id}`; }
         await sql`INSERT INTO menfess (user_id, content, type) VALUES (${u.chat_id}, ${text || '[Media]'}, ${type})`;
       } catch (e) {}
-      // TIDAK ADA deleteMessage - TEKS USER TETAP ADA
+      // SELAIN START OTOMATIS HAPUS - HAPUS PESAN MENFESS USER
+      await autoDelete(chat_id, msg.message_id, false);
       const preview = text ? (text.length > 80 ? text.slice(0,80) + "..." : text) : (type === 'photo' ? '📷 Foto' : '🎥 Video');
-      const successText = `╭─── <b>✅ MENFESS TERKIRIM!</b> ───╮
-│
-│  <i>"${preview}"</i>
-│
-│  Berhasil di-post ke @indo_fess
-│  Identitas kamu tetap <b>ANONIM</b> 🤫
-│
-│  ───────────────
-│  ${unlimited ? '♾️ <b>UNLIMITED</b> - Gratis! Gak potong Coinfes.' : `🪙 Sisa Coinfes : <b>${sisa}</b>\n│  📝 1 Post = 200 Coinfes`}
-│
-╰───────────────────╯
-
-Mau kirim lagi? <b>Langsung ketik aja</b> 👇`;
+      const successText = `╭─── <b>✅ MENFESS TERKIRIM!</b> ───╮\n│\n│  <i>"${preview}"</i>\n│\n│  Berhasil di-post ke @indo_fess\n│  Identitas kamu tetap <b>ANONIM</b> 🤫\n│\n│  ───────────────\n│  ${unlimited ? '♾️ <b>UNLIMITED</b> - Gratis! Gak potong Coinfes.' : `🪙 Sisa Coinfes : <b>${sisa}</b>\n│  📝 1 Post = 200 Coinfes`}\n│\n╰───────────────────╯\n\nMau kirim lagi? <b>Langsung ketik aja</b> 👇`;
       await tg('sendMessage', { chat_id, text: successText, parse_mode: 'HTML', reply_markup: { inline_keyboard: [
         [{ text: "👀 Lihat di Channel", url: "https://t.me/indo_fess" }],
         [{ text: "✍️ Kirim Lagi ➤", callback_data: "kirim" }, { text: "🛑 Berhenti", callback_data: "stop_kirim" }],
@@ -240,4 +234,4 @@ Mau kirim lagi? <b>Langsung ketik aja</b> 👇`;
     }
     return res.status(200).json({ ok: true });
   } catch (e) { console.log(e); return res.status(200).json({ ok: true }); }
-                                                       }
+                                               }
