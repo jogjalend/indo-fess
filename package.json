@@ -1,5 +1,5 @@
 {
-  "name": "menfess-halo-angel",
+  "name": "indofess",
   "version": "1.0.0",
   "type": "module",
   "scripts": { "dev": "vercel dev" },
