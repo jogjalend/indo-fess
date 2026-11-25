@@ -1,8 +1,8 @@
 // api/webhook.js - FULL FIX FINAL + BANNER START
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = "@indo_fess";
-const ADMIN_BASE = "@carebian_5";
-const MOD_BASE = "@mommods";
+const ADMIN_BASE = "@siverif";
+const MOD_BASE = "@siverif";
 const ADMIN_ID = 123456789; // GANTI PAKE ID KAMU
 const BANNER_URL = "https://i.imgur.com/8Qw4w9a.jpeg"; // GANTI PAKE LINK BANNER KAMU
 
