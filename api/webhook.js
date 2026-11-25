@@ -1,66 +1,97 @@
-import TelegramBot from 'node-telegram-bot-api';
-import { sql } from '../lib/db.js';
+const { Pool } = require('pg');
 
-const bot = new TelegramBot(process.env.BOT_TOKEN);
-const ADMIN_ID = process.env.ADMIN_ID;
-const CHANNEL_ID = process.env.CHANNEL_ID; // @indofess
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const CHANNEL_ID = process.env.CHANNEL_ID; // @indo_fess
+const DATABASE_URL = process.env.DATABASE_URL;
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(200).send('OK');
-  const update = req.body;
-  try {
-    if (update.message && update.message.chat.id.toString() !== ADMIN_ID) {
-      const msg = update.message;
-      if (msg.text === '/start') {
-        await bot.sendMessage(msg.chat.id, `Halo! Selamat datang di Menfess INDOFESS 💌\n\nKirim aja menfess kamu disini, bisa teks / foto / video.\n\nMenfess akan dicek admin dulu. Kalau di-ACC, langsung diposting ke @indofess.\n\nKetik /batal untuk batalin menfess terakhir yang pending.`);
-        return res.status(200).send('OK');
-      }
-      if (msg.text === '/batal') {
-        await sql`UPDATE menfess SET status='cancelled' WHERE user_id=${msg.from.id} AND status='pending'`;
-        await bot.sendMessage(msg.chat.id, 'Menfess pending kamu sudah dibatalkan.');
-        return res.status(200).send('OK');
-      }
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-      const text = msg.text || msg.caption || '';
-      const fileId = msg.photo ? msg.photo[msg.photo.length - 1].file_id : msg.video?.file_id || msg.document?.file_id || null;
-      const type = msg.photo ? 'photo' : msg.video ? 'video' : msg.document ? 'document' : 'text';
-
-      const [row] = await sql`
-        INSERT INTO menfess (user_id, username, telegram_message_id, content_type, content, file_id)
-        VALUES (${msg.from.id}, ${msg.from.username || 'anon'}, ${msg.message_id}, ${type}, ${text}, ${fileId})
-        RETURNING id`;
-
-      await bot.sendMessage(ADMIN_ID, `📩 Menfess Baru #${row.id}\nDari: @${msg.from.username || msg.from.id}\nTipe: ${type}\n\n${text}`, {
-        reply_markup: { inline_keyboard: [[
-          { text: '✅ ACC & POST', callback_data: `acc_${row.id}` },
-          { text: '❌ TOLAK', callback_data: `tolak_${row.id}` }
-        ]]}
-      });
-      await bot.sendMessage(msg.chat.id, `Menfess #${row.id} terkirim! Tunggu admin ACC ya ✨`);
-    }
-
-    if (update.callback_query) {
-      const q = update.callback_query;
-      const [action, id] = q.data.split('_');
-      const [data] = await sql`SELECT * FROM menfess WHERE id = ${id}`;
-      if (!data) return res.status(200).send('OK');
-
-      if (action === 'acc') {
-        const caption = data.content ? `${data.content}\n\n— via @indofess` : `— via @indofess`;
-        if (data.content_type === 'photo') await bot.sendPhoto(CHANNEL_ID, data.file_id, { caption });
-        else if (data.content_type === 'video') await bot.sendVideo(CHANNEL_ID, data.file_id, { caption });
-        else if (data.content_type === 'document') await bot.sendDocument(CHANNEL_ID, data.file_id, { caption });
-        else await bot.sendMessage(CHANNEL_ID, caption);
-
-        await sql`UPDATE menfess SET status='posted' WHERE id=${id}`;
-        await bot.sendMessage(data.user_id, `Yeay! Menfess #${id} kamu sudah diposting di @indofess 🥳`);
-        await bot.editMessageText(`Menfess #${id} ✅ DIPOSTING`, { chat_id: ADMIN_ID, message_id: q.message.message_id });
-      } else {
-        await sql`UPDATE menfess SET status='rejected' WHERE id=${id}`;
-        await bot.sendMessage(data.user_id, `Maaf, menfess #${id} kamu belum bisa diposting 🙏`);
-        await bot.editMessageText(`Menfess #${id} ❌ DITOLAK`, { chat_id: ADMIN_ID, message_id: q.message.message_id });
-      }
-    }
-  } catch (e) { console.error(e); }
-  res.status(200).send('OK');
+async function tg(method, body) {
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
 }
+
+async function sendMessage(chat_id, text) {
+  return tg('sendMessage', { chat_id, text, parse_mode: 'HTML' });
+}
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') return res.status(200).json({ ok: true });
+
+  try {
+    const update = req.body;
+    const msg = update.message;
+    if (!msg) return res.status(200).json({ ok: true });
+
+    const chat_id = msg.chat.id;
+    const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name;
+    const user_id = msg.from.id;
+    const text = msg.text || msg.caption || "";
+
+    // /start
+    if (text === '/start') {
+      await sendMessage(chat_id, `Halo! 👋\n\nKirim menfess kamu langsung ke sini, teks / foto / video.\n\nMenfess langsung auto ke-post di ${CHANNEL_ID} tanpa nunggu admin.\n\nKetik aja menfessnya sekarang!`);
+      return res.status(200).json({ ok: true });
+    }
+
+    // Tentukan tipe konten
+    let content_type = 'text';
+    let content = text;
+    let file_id = null;
+
+    if (msg.photo) {
+      content_type = 'photo';
+      file_id = msg.photo[msg.photo.length - 1].file_id;
+    } else if (msg.video) {
+      content_type = 'video';
+      file_id = msg.video.file_id;
+    } else if (msg.animation) {
+      content_type = 'video';
+      file_id = msg.animation.file_id;
+    } else if (!text) {
+      await sendMessage(chat_id, "Kirim teks / foto / video ya!");
+      return res.status(200).json({ ok: true });
+    }
+
+    // Simpan ke DB
+    try {
+      await pool.query(
+        `INSERT INTO menfess (user_id, username, content_type, content, file_id, status) VALUES ($1,$2,$3,$4,$5,'posted')`,
+        [user_id, username, content_type, content, file_id]
+      );
+    } catch (e) { console.log("DB error:", e.message); }
+
+    // AUTO POST KE CHANNEL
+    const postCaption = content_type === 'text'
+      ? `${content}\n\n— via @indo_fess`
+      : `${content ? content + "\n\n" : ""}— via @indo_fess`;
+
+    let result;
+    if (content_type === 'text') {
+      result = await tg('sendMessage', { chat_id: CHANNEL_ID, text: postCaption });
+    } else if (content_type === 'photo') {
+      result = await tg('sendPhoto', { chat_id: CHANNEL_ID, photo: file_id, caption: postCaption });
+    } else if (content_type === 'video') {
+      result = await tg('sendVideo', { chat_id: CHANNEL_ID, video: file_id, caption: postCaption });
+    }
+
+    if (result && result.ok) {
+      await sendMessage(chat_id, `✅ Menfess kamu udah ke-post di ${CHANNEL_ID}!\n\nCek channelnya sekarang!`);
+    } else {
+      console.log("Gagal post:", result);
+      await sendMessage(chat_id, `❌ Gagal ke-post. Bot belum jadi admin di ${CHANNEL_ID} / CHANNEL_ID salah.\n\nError: ${result?.description || 'unknown'}`);
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.log("Webhook error:", e);
+    return res.status(200).json({ ok: true });
+  }
+};
