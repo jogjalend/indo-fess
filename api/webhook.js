@@ -1,4 +1,4 @@
-// N.O.T.A - Final Formal Version
+// N.O.T.A - FULL FIX FINAL
 const TOKEN = process.env.BOT_TOKEN;
 const API = `https://api.telegram.org/bot${TOKEN}`;
 const BASE = "@base_NOTA";
@@ -6,9 +6,8 @@ const BASE_USERNAME = "base_NOTA";
 const GROUP = "@diskusinota";
 const ADMIN = "@jogja_lend";
 
-// Simpan state user (wajib klik tombol dulu)
-const state = new Map(); // userId -> { step: "menunggu_menfess" }
-const lastMenfess = new Map(); // userId -> { chatId: BASE, messageId }
+const state = new Map();
+const lastMenfess = new Map();
 
 async function api(method, body) {
   const r = await fetch(`${API}/${method}`, {
@@ -67,7 +66,6 @@ export default async function handler(req, res) {
       return res.status(200).send("ok");
     }
 
-    // ===== /batal =====
     if (u.message?.text === "/batal") {
       state.delete(u.message.chat.id);
       await send(u.message.chat.id, "Permintaan dibatalkan. Silakan ketik /start untuk kembali ke menu utama.", menuUtama());
@@ -133,7 +131,6 @@ export default async function handler(req, res) {
       const teks = u.message.text;
       const s = state.get(id);
 
-      // 1. BELUM KLIK TOMBOL -> GAGAL
       if (!s || s.step !== "menunggu_menfess") {
         await send(id,
           `<b>Gagal Mengirim Menfess</b>\n\n` +
@@ -144,11 +141,10 @@ export default async function handler(req, res) {
         return res.status(200).send("ok");
       }
 
-      // 2. SUDAH KLIK -> KIRIM KE BASE
       state.delete(id);
       const result = await api("sendMessage", {
         chat_id: BASE,
-        text: `${teks}\n\n— <i>via N.O.T.A</i>`,
+        text: `${teks}\n\n- Via @nofta_bot`,
         parse_mode: "HTML",
       });
 
@@ -176,7 +172,7 @@ export default async function handler(req, res) {
       return res.status(200).send("ok");
     }
 
-    // ===== PESAN FOTO / MEDIA =====
+    // ===== FOTO / VIDEO =====
     if (u.message?.photo || u.message?.video) {
       const id = u.message.chat.id;
       const s = state.get(id);
@@ -191,7 +187,7 @@ export default async function handler(req, res) {
       const result = await api(isPhoto ? "sendPhoto" : "sendVideo", {
         chat_id: BASE,
         [isPhoto ? "photo" : "video"]: fileId,
-        caption: caption ? `${caption}\n\n— via N.O.T.A` : "— via N.O.T.A",
+        caption: caption ? `${caption}\n\n- Via @nofta_bot` : "- Via @nofta_bot",
         parse_mode: "HTML",
       });
       if (result.ok) {
@@ -210,4 +206,4 @@ export default async function handler(req, res) {
     console.error(e);
     return res.status(200).send("ok");
   }
-}
+            }
