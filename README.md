@@ -1,11 +1,36 @@
-# Menfess @indofess
-Stack: GitHub + Vercel + Neon + Telegram Bot
+# BOT N.O.T.A
+
+Bot Menfess Anonim Simple untuk Telegram.
+
+## Akun
+- Bot : @nofta_bot
+- Base / Channel : @base_NOTA
+- Grup Diskusi : @diskusinota
+- Admin : @jogja_lend
+- Mod : @siverif
+
+## Fitur
+- ✍️ Kirim Menfess (Teks / Foto / Video)
+- 👤 Profile Anonim
+- ⚙️ Setting (Sex, Birth, Location, Interest)
+- 💞 HITME - Minta kenalan
+- 💌 WHO - Liat profil anonim pengirim
+- 💬 TALK - Komen di grup diskusi
+- ❗ Report - Laporin menfess ke admin
+- Gratis, tanpa coin
+
+## Cara Pakai
+1. Start @nofta_bot
+2. Klik Kirim Menfess
+3. Ketik / kirim foto / video
+4. Auto ke-post di @base_NOTA
+
+## Deploy
+- Vercel + Telegram Webhook
+- File utama : `api/webhook.js`
 
 ## Setup
-1. Buat DB di Neon, jalankan:
-CREATE TABLE menfess (id SERIAL PRIMARY KEY, user_id BIGINT, username TEXT, telegram_message_id BIGINT, content_type TEXT, content TEXT, file_id TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW());
-
-2. Import repo ke Vercel, isi Env: BOT_TOKEN, ADMIN_ID, CHANNEL_ID, DATABASE_URL, ADMIN_KEY
-
-3. Set Webhook:
-https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<domain-kamu>.vercel.app/api/webhook
+1. Buat bot di @BotFather
+2. Set `BOT_TOKEN` di Vercel Environment Variables
+3. Jadikan bot admin di @base_NOTA dan @diskusinota
+4. Set webhook ke URL Vercel kamu
